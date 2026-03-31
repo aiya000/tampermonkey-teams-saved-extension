@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Teams 保存済み拡張 - Slack 風「完了」「アーカイブ」
+// @name         Teams Saved Extensions - Slack-style "Done" and "Archive"
 // @namespace    https://github.com/aiya000/dotfiles
 // @version      1.1.0
-// @description  Microsoft Teams の「保存済み」に Slack 風の「完了」「アーカイブ」タブを追加します。データは localStorage に保存されます。
+// @description  Adds Slack-style "Completed" and "Archived" tabs to the "Saved" section in Microsoft Teams. You can organize items saved in "Saved" by categorizing them into "Completed" or "Archived," or by deleting them. Data is stored in localStorage.
 // @author       aiya000
 // @match        https://teams.microsoft.com/*
 // @match        https://teams.live.com/*
