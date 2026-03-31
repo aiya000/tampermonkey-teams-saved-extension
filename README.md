@@ -14,7 +14,7 @@ Adds Slack-style "Completed" and "Archived" tabs to the "Saved" section in Micro
 ## インストール
 
 1. ブラウザに [Tampermonkey](https://www.tampermonkey.net/) をインストール
-2. `teams-saved-extension.user.js` をTampermonkeyに追加
+2. [teams-saved-extension.user.js](https://raw.githubusercontent.com/aiya000/tampermonkey-teams-saved-extension/refs/heads/main/teams-saved-extension.user.js をTampermonkeyにインストール
 
 ## 対応 URL
 
