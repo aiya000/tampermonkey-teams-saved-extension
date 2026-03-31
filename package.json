@@ -1,0 +1,26 @@
+{
+  "name": "tampermonkey-teams-saved-extension",
+  "version": "1.1.0",
+  "description": "Microsoft Teams の「保存済み」に Slack 風の「完了」「アーカイブ」タブを追加する Tampermonkey スクリプト",
+  "main": "teams-saved-extension.user.js",
+  "scripts": {
+    "typecheck": "tsc",
+    "lint": "bun run eslint ; bun run prettier",
+    "eslint": "eslint teams-saved-extension.user.js",
+    "prettier": "prettier teams-saved-extension.user.js > /dev/null && echo 'Prettier: No issues found' || echo 'Prettier: Issues found'",
+    "fix": "bun run eslint:fix && bun run prettier:fix",
+    "eslint:fix": "eslint --fix teams-saved-extension.user.js",
+    "prettier:fix": "prettier --write teams-saved-extension.user.js"
+  },
+  "author": "aiya000",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/tampermonkey": "^5.0.5",
+    "eslint": "^9.39.4",
+    "eslint-plugin-import-x": "^4.16.2",
+    "eslint-plugin-n": "^17.24.0",
+    "eslint-plugin-promise": "^7.2.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.1"
+  }
+}
