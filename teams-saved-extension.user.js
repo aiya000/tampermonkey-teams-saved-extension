@@ -57,7 +57,13 @@
 
   const STORAGE_KEY = 'tse_v1';
 
+  /**
+   * @typedef {{ id: string, sender: string, text: string, movedAt: string }} SavedItem
+   * @typedef {{ done: SavedItem[], archived: SavedItem[] }} StoreData
+   */
+
   const store = {
+    /** @returns {StoreData} */
     load() {
       try {
         const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{"done":[],"archived":[]}');
@@ -68,6 +74,7 @@
         return { done: [], archived: [] };
       }
     },
+    /** @param {StoreData} data */
     save(data) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     },
@@ -79,8 +86,10 @@
   //  取り出せなければ送信者 + テキストのハッシュで代替。
   // ──────────────────────────────────────────────────────────
 
+  /** @param {string} str */
   function cyrb53(str) {
-    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    let h1 = 0xdeadbeef;
+    let h2 = 0x41c6ce57;
     for (let i = 0; i < str.length; i++) {
       const c = str.charCodeAt(i);
       h1 = Math.imul(h1 ^ c, 2654435761);
@@ -92,6 +101,7 @@
   }
 
   // el はカード要素（.fui-MessageSliceCard）またはその子孫
+  /** @param {Element} el */
   function getMessageId(el) {
     // カード自身または祖先の id="message-slice-card-saved-*" を探す
     const card = el.matches('[id^="message-slice-card-saved-"]')
@@ -109,6 +119,7 @@
     return 'hash:' + cyrb53(sender + '\0' + text);
   }
 
+  /** @param {Element} el */
   function extractSender(el) {
     return (
       el.querySelector('[data-tid*="author"], [data-tid*="sender"], [class*="authorName"]')?.textContent ??
@@ -117,6 +128,7 @@
     ).trim();
   }
 
+  /** @param {Element} el */
   function extractText(el) {
     return el.textContent.trim().slice(0, 500);
   }
@@ -125,8 +137,9 @@
   //  HTML エスケープ
   // ──────────────────────────────────────────────────────────
 
+  /** @type {Record<string, string>} */
   const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
-  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ESC_MAP[c]);
+  const esc = (/** @type {string|null|undefined} */ s) => String(s ?? '').replace(/[&<>"]/g, c => ESC_MAP[c]);
 
   // ──────────────────────────────────────────────────────────
   //  スタイル
@@ -271,23 +284,26 @@
 
   // Teams PWA の「保存済み」コンテンツ領域
   // DOM 調査により class="fui-TreeGrid fui-MessageSlice ..." と判明
+  /** @returns {HTMLElement|null} */
   function findSavedPanel() {
-    return document.querySelector('.fui-MessageSlice');
+    return /** @type {HTMLElement|null} */ (document.querySelector('.fui-MessageSlice'));
   }
 
   // 保存済みメッセージのカード
   // id="message-slice-card-saved-*" が最も確実
+  /** @param {Element} root @returns {HTMLElement[]} */
   function findCards(root) {
     const byId = root.querySelectorAll('[id^="message-slice-card-saved-"]');
-    if (byId.length > 0) return Array.from(byId);
+    if (byId.length > 0) return /** @type {HTMLElement[]} */ (Array.from(byId));
     // フォールバック: クラス名
-    return Array.from(root.querySelectorAll('.fui-MessageSliceCard'));
+    return /** @type {HTMLElement[]} */ (Array.from(root.querySelectorAll('.fui-MessageSliceCard')));
   }
 
   // ──────────────────────────────────────────────────────────
   //  状態
   // ──────────────────────────────────────────────────────────
 
+  /** @type {{ tab: string, panel: HTMLElement|null, tabBar: HTMLElement|null, nativeRoot: HTMLElement|null }} */
   const gState = {
     tab: 'saved',      // 'saved' | 'done' | 'archived'
     panel: null,       // 注入済みパネル要素
@@ -299,12 +315,14 @@
   //  タブ切り替え
   // ──────────────────────────────────────────────────────────
 
+  /** @param {string} tab */
   function switchTab(tab) {
     gState.tab = tab;
 
     if (gState.tabBar) {
       gState.tabBar.querySelectorAll('.tse-tab').forEach(b => {
-        b.dataset.active = String(b.dataset.tab === tab);
+        const btn = /** @type {HTMLElement} */ (b);
+        btn.dataset.active = String(btn.dataset.tab === tab);
       });
     }
 
@@ -316,8 +334,9 @@
       decorateCards(gState.nativeRoot);
     } else {
       if (gState.nativeRoot) gState.nativeRoot.style.display = 'none';
-      gState.panel.appendChild(buildCustomPanel(tab));
-      gState.panel.appendChild(buildToolbar());
+      const panel = /** @type {HTMLElement} */ (gState.panel);
+      panel.appendChild(buildCustomPanel(tab));
+      panel.appendChild(buildToolbar());
     }
   }
 
@@ -325,6 +344,7 @@
   //  カスタムパネル（完了 / アーカイブ一覧）
   // ──────────────────────────────────────────────────────────
 
+  /** @param {string} tab */
   function buildCustomPanel(tab) {
     const data  = store.load();
     const items = tab === 'done' ? data.done : data.archived;
@@ -353,6 +373,7 @@
       `;
 
       const actions = card.querySelector('.tse-actions');
+      if (!actions) return;
 
       const restoreBtn = document.createElement('button');
       restoreBtn.className = 'tse-btn tse-btn-restore';
@@ -423,6 +444,7 @@
   //  CRUD
   // ──────────────────────────────────────────────────────────
 
+  /** @param {string} msgId @param {string} sender @param {string} text @param {string} status */
   function markAs(msgId, sender, text, status) {
     const data  = store.load();
     const entry = { id: msgId, sender, text, movedAt: new Date().toISOString() };
@@ -436,6 +458,7 @@
     store.save(data);
   }
 
+  /** @param {string} id @param {string} type */
   function removeFromStore(id, type) {
     const data = store.load();
     if (type === 'done') data.done     = data.done.filter(i => i.id !== id);
@@ -443,6 +466,7 @@
     store.save(data);
   }
 
+  /** @param {string} msgId */
   function isCategorized(msgId) {
     const data = store.load();
     return data.done.some(i => i.id === msgId) || data.archived.some(i => i.id === msgId);
@@ -468,15 +492,17 @@
     input.type     = 'file';
     input.accept   = '.json';
     input.onchange = (e) => {
-      const file = e.target.files?.[0];
+      const target = /** @type {HTMLInputElement} */ (e.target);
+      const file = target.files?.[0];
       if (!file) return;
       const reader  = new FileReader();
       reader.onload = (ev) => {
         try {
-          const imp = JSON.parse(ev.target.result);
+          const loadedReader = /** @type {FileReader} */ (ev.target);
+          const imp = JSON.parse(/** @type {string} */ (loadedReader.result));
           if (!Array.isArray(imp.done) || !Array.isArray(imp.archived)) throw new Error();
           const cur = store.load();
-          const merge = (existing, incoming) => {
+          const merge = (/** @type {SavedItem[]} */ existing, /** @type {SavedItem[]} */ incoming) => {
             const map = new Map(existing.map(i => [i.id, i]));
             incoming.forEach(i => { if (!map.has(i.id)) map.set(i.id, i); });
             return [...map.values()];
@@ -497,11 +523,13 @@
   //  カードへのボタン注入
   // ──────────────────────────────────────────────────────────
 
+  /** @param {HTMLElement|null} root */
   function decorateCards(root) {
     if (!root) return;
     findCards(root).forEach(decorateCard);
   }
 
+  /** @param {HTMLElement} card */
   function decorateCard(card) {
     // 保存済みカード以外（フォロー中のスレッドなど）はスキップ
     if (!card.matches('[id^="message-slice-card-saved-"]') && !card.closest('[id^="message-slice-card-saved-"]')) return;
@@ -554,6 +582,7 @@
   //  パネルへの UI 注入（初回 or DOM 差し替え時）
   // ──────────────────────────────────────────────────────────
 
+  /** @param {HTMLElement} panel */
   function initPanel(panel) {
     injectStyles();
     gState.panel = panel;
@@ -610,6 +639,7 @@
   //  MutationObserver
   // ──────────────────────────────────────────────────────────
 
+  /** @type {ReturnType<typeof setTimeout>|null} */
   let throttle = null;
 
   const observer = new MutationObserver(() => {
