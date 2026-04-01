@@ -48,14 +48,14 @@
 //    }
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-(function () {
-  'use strict';
+;(function () {
+  'use strict'
 
   // ──────────────────────────────────────────────────────────
   //  Storage
   // ──────────────────────────────────────────────────────────
 
-  const STORAGE_KEY = 'tse_v1';
+  const STORAGE_KEY = 'tse_v1'
 
   /**
    * @typedef {{ id: string, sender: string, text: string, movedAt: string }} SavedItem
@@ -66,19 +66,19 @@
     /** @returns {StoreData} */
     load() {
       try {
-        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{"done":[],"archived":[]}');
-        if (!Array.isArray(parsed.done))     parsed.done     = [];
-        if (!Array.isArray(parsed.archived)) parsed.archived = [];
-        return parsed;
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{"done":[],"archived":[]}')
+        if (!Array.isArray(parsed.done)) parsed.done = []
+        if (!Array.isArray(parsed.archived)) parsed.archived = []
+        return parsed
       } catch {
-        return { done: [], archived: [] };
+        return { done: [], archived: [] }
       }
     },
     /** @param {StoreData} data */
     save(data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    },
-  };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    }
+  }
 
   // ──────────────────────────────────────────────────────────
   //  メッセージ識別子
@@ -88,16 +88,16 @@
 
   /** @param {string} str */
   function cyrb53(str) {
-    let h1 = 0xdeadbeef;
-    let h2 = 0x41c6ce57;
+    let h1 = 0xdeadbeef
+    let h2 = 0x41c6ce57
     for (let i = 0; i < str.length; i++) {
-      const c = str.charCodeAt(i);
-      h1 = Math.imul(h1 ^ c, 2654435761);
-      h2 = Math.imul(h2 ^ c, 1597334677);
+      const c = str.charCodeAt(i)
+      h1 = Math.imul(h1 ^ c, 2654435761)
+      h2 = Math.imul(h2 ^ c, 1597334677)
     }
-    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36)
   }
 
   // el はカード要素（.fui-MessageSliceCard）またはその子孫
@@ -106,31 +106,32 @@
     // カード自身または祖先の id="message-slice-card-saved-*" を探す
     const card = el.matches('[id^="message-slice-card-saved-"]')
       ? el
-      : el.closest('[id^="message-slice-card-saved-"]');
+      : el.closest('[id^="message-slice-card-saved-"]')
     if (card?.id) {
       // "message-slice-card-saved-SavedSliceCardItem|1774938888651"
       // → "SavedSliceCardItem|1774938888651"
-      const match = card.id.match(/message-slice-card-saved-(.+)/);
-      if (match) return match[1];
+      const match = card.id.match(/message-slice-card-saved-(.+)/)
+      if (match) return match[1]
     }
     // フォールバック: コンテンツハッシュ
-    const sender = extractSender(el);
-    const text   = el.textContent.trim().slice(0, 120);
-    return 'hash:' + cyrb53(sender + '\0' + text);
+    const sender = extractSender(el)
+    const text = el.textContent.trim().slice(0, 120)
+    return 'hash:' + cyrb53(sender + '\0' + text)
   }
 
   /** @param {Element} el */
   function extractSender(el) {
     return (
-      el.querySelector('[data-tid*="author"], [data-tid*="sender"], [class*="authorName"]')?.textContent ??
+      el.querySelector('[data-tid*="author"], [data-tid*="sender"], [class*="authorName"]')
+        ?.textContent ??
       el.querySelector('[class*="author"], [class*="sender"]')?.textContent ??
       ''
-    ).trim();
+    ).trim()
   }
 
   /** @param {Element} el */
   function extractText(el) {
-    return el.textContent.trim().slice(0, 500);
+    return el.textContent.trim().slice(0, 500)
   }
 
   // ──────────────────────────────────────────────────────────
@@ -138,17 +139,18 @@
   // ──────────────────────────────────────────────────────────
 
   /** @type {Record<string, string>} */
-  const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
-  const esc = (/** @type {string|null|undefined} */ s) => String(s ?? '').replace(/[&<>"]/g, c => ESC_MAP[c]);
+  const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
+  const esc = (/** @type {string|null|undefined} */ s) =>
+    String(s ?? '').replace(/[&<>"]/g, c => ESC_MAP[c])
 
   // ──────────────────────────────────────────────────────────
   //  スタイル
   // ──────────────────────────────────────────────────────────
 
   function injectStyles() {
-    if (document.getElementById('tse-styles')) return;
-    const s = document.createElement('style');
-    s.id = 'tse-styles';
+    if (document.getElementById('tse-styles')) return
+    const s = document.createElement('style')
+    s.id = 'tse-styles'
     s.textContent = `
       /* ── タブバー ── */
       #tse-tabs {
@@ -274,8 +276,8 @@
         color: inherit;
       }
       .tse-tool-btn:hover { background: rgba(255,255,255,0.12); }
-    `;
-    document.head.appendChild(s);
+    `
+    document.head.appendChild(s)
   }
 
   // ──────────────────────────────────────────────────────────
@@ -286,17 +288,17 @@
   // DOM 調査により class="fui-TreeGrid fui-MessageSlice ..." と判明
   /** @returns {HTMLElement|null} */
   function findSavedPanel() {
-    return /** @type {HTMLElement|null} */ (document.querySelector('.fui-MessageSlice'));
+    return /** @type {HTMLElement|null} */ (document.querySelector('.fui-MessageSlice'))
   }
 
   // 保存済みメッセージのカード
   // id="message-slice-card-saved-*" が最も確実
   /** @param {Element} root @returns {HTMLElement[]} */
   function findCards(root) {
-    const byId = root.querySelectorAll('[id^="message-slice-card-saved-"]');
-    if (byId.length > 0) return /** @type {HTMLElement[]} */ (Array.from(byId));
+    const byId = root.querySelectorAll('[id^="message-slice-card-saved-"]')
+    if (byId.length > 0) return /** @type {HTMLElement[]} */ (Array.from(byId))
     // フォールバック: クラス名
-    return /** @type {HTMLElement[]} */ (Array.from(root.querySelectorAll('.fui-MessageSliceCard')));
+    return /** @type {HTMLElement[]} */ (Array.from(root.querySelectorAll('.fui-MessageSliceCard')))
   }
 
   // ──────────────────────────────────────────────────────────
@@ -305,11 +307,11 @@
 
   /** @type {{ tab: string, panel: HTMLElement|null, tabBar: HTMLElement|null, nativeRoot: HTMLElement|null }} */
   const gState = {
-    tab: 'saved',      // 'saved' | 'done' | 'archived'
-    panel: null,       // 注入済みパネル要素
+    tab: 'saved', // 'saved' | 'done' | 'archived'
+    panel: null, // 注入済みパネル要素
     tabBar: null,
-    nativeRoot: null,  // Teams のネイティブリストをラップした div
-  };
+    nativeRoot: null // Teams のネイティブリストをラップした div
+  }
 
   // ──────────────────────────────────────────────────────────
   //  タブ切り替え
@@ -317,26 +319,26 @@
 
   /** @param {string} tab */
   function switchTab(tab) {
-    gState.tab = tab;
+    gState.tab = tab
 
     if (gState.tabBar) {
       gState.tabBar.querySelectorAll('.tse-tab').forEach(b => {
-        const btn = /** @type {HTMLElement} */ (b);
-        btn.dataset.active = String(btn.dataset.tab === tab);
-      });
+        const btn = /** @type {HTMLElement} */ (b)
+        btn.dataset.active = String(btn.dataset.tab === tab)
+      })
     }
 
-    document.getElementById('tse-custom-panel')?.remove();
-    document.getElementById('tse-toolbar')?.remove();
+    document.getElementById('tse-custom-panel')?.remove()
+    document.getElementById('tse-toolbar')?.remove()
 
     if (tab === 'saved') {
-      if (gState.nativeRoot) gState.nativeRoot.style.display = '';
-      decorateCards(gState.nativeRoot);
+      if (gState.nativeRoot) gState.nativeRoot.style.display = ''
+      decorateCards(gState.nativeRoot)
     } else {
-      if (gState.nativeRoot) gState.nativeRoot.style.display = 'none';
-      const panel = /** @type {HTMLElement} */ (gState.panel);
-      panel.appendChild(buildCustomPanel(tab));
-      panel.appendChild(buildToolbar());
+      if (gState.nativeRoot) gState.nativeRoot.style.display = 'none'
+      const panel = /** @type {HTMLElement} */ (gState.panel)
+      panel.appendChild(buildCustomPanel(tab))
+      panel.appendChild(buildToolbar())
     }
   }
 
@@ -346,23 +348,22 @@
 
   /** @param {string} tab */
   function buildCustomPanel(tab) {
-    const data  = store.load();
-    const items = tab === 'done' ? data.done : data.archived;
-    const emptyMsg = tab === 'done'
-      ? '完了済みのメッセージはないのです'
-      : 'アーカイブ済みのメッセージはないのです';
+    const data = store.load()
+    const items = tab === 'done' ? data.done : data.archived
+    const emptyMsg =
+      tab === 'done' ? '完了済みのメッセージはないのです' : 'アーカイブ済みのメッセージはないのです'
 
-    const root = document.createElement('div');
-    root.id = 'tse-custom-panel';
+    const root = document.createElement('div')
+    root.id = 'tse-custom-panel'
 
     if (items.length === 0) {
-      root.innerHTML = `<div class="tse-empty">${esc(emptyMsg)}</div>`;
-      return root;
+      root.innerHTML = `<div class="tse-empty">${esc(emptyMsg)}</div>`
+      return root
     }
 
     items.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'tse-card';
+      const card = document.createElement('div')
+      card.className = 'tse-card'
       card.innerHTML = `
         <div class="tse-card-header">
           <span class="tse-card-sender">${esc(item.sender || '(不明)')}</span>
@@ -370,51 +371,53 @@
         </div>
         <div class="tse-card-text">${esc(item.text || '')}</div>
         <div class="tse-actions"></div>
-      `;
+      `
 
-      const actions = card.querySelector('.tse-actions');
-      if (!actions) return;
+      const actions = card.querySelector('.tse-actions')
+      if (!actions) return
 
-      const restoreBtn = document.createElement('button');
-      restoreBtn.className = 'tse-btn tse-btn-restore';
-      restoreBtn.textContent = '保存に戻す';
-      restoreBtn.title = 'このリストから削除します。Teams 側の「保存済み」にはそのまま残りますです。';
+      const restoreBtn = document.createElement('button')
+      restoreBtn.className = 'tse-btn tse-btn-restore'
+      restoreBtn.textContent = '保存に戻す'
+      restoreBtn.title =
+        'このリストから削除します。Teams 側の「保存済み」にはそのまま残りますです。'
       restoreBtn.onclick = () => {
-        removeFromStore(item.id, tab);
-        card.remove();
+        removeFromStore(item.id, tab)
+        card.remove()
         if (!root.querySelector('.tse-card')) {
-          root.innerHTML = `<div class="tse-empty">${esc(emptyMsg)}</div>`;
+          root.innerHTML = `<div class="tse-empty">${esc(emptyMsg)}</div>`
         }
         // 「保存中」タブのカードを再表示させる（display:none を解除）
         if (gState.nativeRoot) {
           findCards(gState.nativeRoot)
             .filter(c => getMessageId(c) === item.id)
             .forEach(c => {
-              c.style.display = '';
-              c.querySelector('.tse-actions')?.remove();
-            });
-          decorateCards(gState.nativeRoot);
+              c.style.display = ''
+              c.querySelector('.tse-actions')?.remove()
+            })
+          decorateCards(gState.nativeRoot)
         }
-      };
+      }
 
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'tse-btn tse-btn-delete';
-      deleteBtn.textContent = '完全削除';
-      deleteBtn.title = 'このリストから完全に削除します。Teams 側の「保存済み」も手動で取り消してほしいのです。';
+      const deleteBtn = document.createElement('button')
+      deleteBtn.className = 'tse-btn tse-btn-delete'
+      deleteBtn.textContent = '完全削除'
+      deleteBtn.title =
+        'このリストから完全に削除します。Teams 側の「保存済み」も手動で取り消してほしいのです。'
       deleteBtn.onclick = () => {
-        removeFromStore(item.id, tab);
-        card.remove();
+        removeFromStore(item.id, tab)
+        card.remove()
         if (!root.querySelector('.tse-card')) {
-          root.innerHTML = `<div class="tse-empty">${esc(emptyMsg)}</div>`;
+          root.innerHTML = `<div class="tse-empty">${esc(emptyMsg)}</div>`
         }
-      };
+      }
 
-      actions.appendChild(restoreBtn);
-      actions.appendChild(deleteBtn);
-      root.appendChild(card);
-    });
+      actions.appendChild(restoreBtn)
+      actions.appendChild(deleteBtn)
+      root.appendChild(card)
+    })
 
-    return root;
+    return root
   }
 
   // ──────────────────────────────────────────────────────────
@@ -422,22 +425,22 @@
   // ──────────────────────────────────────────────────────────
 
   function buildToolbar() {
-    const el = document.createElement('div');
-    el.id = 'tse-toolbar';
+    const el = document.createElement('div')
+    el.id = 'tse-toolbar'
 
-    const exportBtn = document.createElement('button');
-    exportBtn.className = 'tse-tool-btn';
-    exportBtn.textContent = 'エクスポート (.json)';
-    exportBtn.onclick = doExport;
+    const exportBtn = document.createElement('button')
+    exportBtn.className = 'tse-tool-btn'
+    exportBtn.textContent = 'エクスポート (.json)'
+    exportBtn.onclick = doExport
 
-    const importBtn = document.createElement('button');
-    importBtn.className = 'tse-tool-btn';
-    importBtn.textContent = 'インポート (.json)';
-    importBtn.onclick = doImport;
+    const importBtn = document.createElement('button')
+    importBtn.className = 'tse-tool-btn'
+    importBtn.textContent = 'インポート (.json)'
+    importBtn.onclick = doImport
 
-    el.appendChild(exportBtn);
-    el.appendChild(importBtn);
-    return el;
+    el.appendChild(exportBtn)
+    el.appendChild(importBtn)
+    return el
   }
 
   // ──────────────────────────────────────────────────────────
@@ -446,30 +449,30 @@
 
   /** @param {string} msgId @param {string} sender @param {string} text @param {string} status */
   function markAs(msgId, sender, text, status) {
-    const data  = store.load();
-    const entry = { id: msgId, sender, text, movedAt: new Date().toISOString() };
+    const data = store.load()
+    const entry = { id: msgId, sender, text, movedAt: new Date().toISOString() }
     if (status === 'done') {
-      data.done = data.done.filter(i => i.id !== msgId);
-      data.done.unshift(entry);
+      data.done = data.done.filter(i => i.id !== msgId)
+      data.done.unshift(entry)
     } else {
-      data.archived = data.archived.filter(i => i.id !== msgId);
-      data.archived.unshift(entry);
+      data.archived = data.archived.filter(i => i.id !== msgId)
+      data.archived.unshift(entry)
     }
-    store.save(data);
+    store.save(data)
   }
 
   /** @param {string} id @param {string} type */
   function removeFromStore(id, type) {
-    const data = store.load();
-    if (type === 'done') data.done     = data.done.filter(i => i.id !== id);
-    else                 data.archived = data.archived.filter(i => i.id !== id);
-    store.save(data);
+    const data = store.load()
+    if (type === 'done') data.done = data.done.filter(i => i.id !== id)
+    else data.archived = data.archived.filter(i => i.id !== id)
+    store.save(data)
   }
 
   /** @param {string} msgId */
   function isCategorized(msgId) {
-    const data = store.load();
-    return data.done.some(i => i.id === msgId) || data.archived.some(i => i.id === msgId);
+    const data = store.load()
+    return data.done.some(i => i.id === msgId) || data.archived.some(i => i.id === msgId)
   }
 
   // ──────────────────────────────────────────────────────────
@@ -477,46 +480,54 @@
   // ──────────────────────────────────────────────────────────
 
   function doExport() {
-    const data = store.load();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `teams-saved-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    const data = store.load()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `teams-saved-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 2000)
   }
 
   function doImport() {
-    const input    = document.createElement('input');
-    input.type     = 'file';
-    input.accept   = '.json';
-    input.onchange = (e) => {
-      const target = /** @type {HTMLInputElement} */ (e.target);
-      const file = target.files?.[0];
-      if (!file) return;
-      const reader  = new FileReader();
-      reader.onload = (ev) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = e => {
+      const target = /** @type {HTMLInputElement} */ (e.target)
+      const file = target.files?.[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = ev => {
         try {
-          const loadedReader = /** @type {FileReader} */ (ev.target);
-          const imp = JSON.parse(/** @type {string} */ (loadedReader.result));
-          if (!Array.isArray(imp.done) || !Array.isArray(imp.archived)) throw new Error();
-          const cur = store.load();
-          const merge = (/** @type {SavedItem[]} */ existing, /** @type {SavedItem[]} */ incoming) => {
-            const map = new Map(existing.map(i => [i.id, i]));
-            incoming.forEach(i => { if (!map.has(i.id)) map.set(i.id, i); });
-            return [...map.values()];
-          };
-          store.save({ done: merge(cur.done, imp.done), archived: merge(cur.archived, imp.archived) });
-          alert('インポート完了なのです♪');
-          switchTab(gState.tab);
+          const loadedReader = /** @type {FileReader} */ (ev.target)
+          const imp = JSON.parse(/** @type {string} */ (loadedReader.result))
+          if (!Array.isArray(imp.done) || !Array.isArray(imp.archived)) throw new Error()
+          const cur = store.load()
+          const merge = (
+            /** @type {SavedItem[]} */ existing,
+            /** @type {SavedItem[]} */ incoming
+          ) => {
+            const map = new Map(existing.map(i => [i.id, i]))
+            incoming.forEach(i => {
+              if (!map.has(i.id)) map.set(i.id, i)
+            })
+            return [...map.values()]
+          }
+          store.save({
+            done: merge(cur.done, imp.done),
+            archived: merge(cur.archived, imp.archived)
+          })
+          alert('インポート完了なのです♪')
+          switchTab(gState.tab)
         } catch {
-          alert('インポートに失敗しましたです…\nJSON ファイルの形式を確認してほしいのです。');
+          alert('インポートに失敗しましたです…\nJSON ファイルの形式を確認してほしいのです。')
         }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
+      }
+      reader.readAsText(file)
+    }
+    input.click()
   }
 
   // ──────────────────────────────────────────────────────────
@@ -525,57 +536,61 @@
 
   /** @param {HTMLElement|null} root */
   function decorateCards(root) {
-    if (!root) return;
-    findCards(root).forEach(decorateCard);
+    if (!root) return
+    findCards(root).forEach(decorateCard)
   }
 
   /** @param {HTMLElement} card */
   function decorateCard(card) {
     // 保存済みカード以外（フォロー中のスレッドなど）はスキップ
-    if (!card.matches('[id^="message-slice-card-saved-"]') && !card.closest('[id^="message-slice-card-saved-"]')) return;
+    if (
+      !card.matches('[id^="message-slice-card-saved-"]') &&
+      !card.closest('[id^="message-slice-card-saved-"]')
+    )
+      return
 
-    const msgId = getMessageId(card);
+    const msgId = getMessageId(card)
 
     // 完了 / アーカイブ済みならカードを隠す
     if (isCategorized(msgId)) {
-      card.style.display = 'none';
-      return;
+      card.style.display = 'none'
+      return
     }
 
     // 既にボタン注入済みならスキップ
-    if (card.querySelector('.tse-actions')) return;
+    if (card.querySelector('.tse-actions')) return
 
-    const sender = extractSender(card);
-    const text   = extractText(card);
+    const sender = extractSender(card)
+    const text = extractText(card)
 
-    const actions = document.createElement('div');
-    actions.className = 'tse-actions';
+    const actions = document.createElement('div')
+    actions.className = 'tse-actions'
 
-    const doneBtn = document.createElement('button');
-    doneBtn.className   = 'tse-btn tse-btn-done';
-    doneBtn.textContent = '完了にする';
-    doneBtn.onclick     = (e) => {
-      e.stopPropagation();
-      markAs(msgId, sender, text, 'done');
-      card.style.display = 'none';
-    };
+    const doneBtn = document.createElement('button')
+    doneBtn.className = 'tse-btn tse-btn-done'
+    doneBtn.textContent = '完了にする'
+    doneBtn.onclick = e => {
+      e.stopPropagation()
+      markAs(msgId, sender, text, 'done')
+      card.style.display = 'none'
+    }
 
-    const archBtn = document.createElement('button');
-    archBtn.className   = 'tse-btn tse-btn-arch';
-    archBtn.textContent = 'アーカイブにする';
-    archBtn.onclick     = (e) => {
-      e.stopPropagation();
-      markAs(msgId, sender, text, 'archived');
-      card.style.display = 'none';
-    };
+    const archBtn = document.createElement('button')
+    archBtn.className = 'tse-btn tse-btn-arch'
+    archBtn.textContent = 'アーカイブにする'
+    archBtn.onclick = e => {
+      e.stopPropagation()
+      markAs(msgId, sender, text, 'archived')
+      card.style.display = 'none'
+    }
 
-    actions.appendChild(doneBtn);
-    actions.appendChild(archBtn);
+    actions.appendChild(doneBtn)
+    actions.appendChild(archBtn)
 
     // カードは fui-TreeGridRow（CSS Grid）。
     // grid-column: 1 / -1 （CSS で指定済み）で全列スパンさせるため、
     // カード自身に直接 append する。
-    card.appendChild(actions);
+    card.appendChild(actions)
   }
 
   // ──────────────────────────────────────────────────────────
@@ -584,55 +599,55 @@
 
   /** @param {HTMLElement} panel */
   function initPanel(panel) {
-    injectStyles();
-    gState.panel = panel;
+    injectStyles()
+    gState.panel = panel
 
     // 既に注入済みならスキップ
-    if (panel.querySelector('#tse-tabs')) return;
+    if (panel.querySelector('#tse-tabs')) return
 
     // ── タブバー ──
-    const tabBar = document.createElement('div');
-    tabBar.id = 'tse-tabs';
-    gState.tabBar = tabBar;
+    const tabBar = document.createElement('div')
+    tabBar.id = 'tse-tabs'
+    gState.tabBar = tabBar
 
-    [
-      { id: 'saved',    label: '保存中'    },
-      { id: 'done',     label: '完了'      },
-      { id: 'archived', label: 'アーカイブ' },
+    ;[
+      { id: 'saved', label: '保存中' },
+      { id: 'done', label: '完了' },
+      { id: 'archived', label: 'アーカイブ' }
     ].forEach(({ id, label }) => {
-      const btn = document.createElement('button');
-      btn.className      = 'tse-tab';
-      btn.dataset.tab    = id;
-      btn.dataset.active = String(gState.tab === id);
-      btn.textContent    = label;
-      btn.onclick        = () => switchTab(id);
-      tabBar.appendChild(btn);
-    });
+      const btn = document.createElement('button')
+      btn.className = 'tse-tab'
+      btn.dataset.tab = id
+      btn.dataset.active = String(gState.tab === id)
+      btn.textContent = label
+      btn.onclick = () => switchTab(id)
+      tabBar.appendChild(btn)
+    })
 
-    const divider = document.createElement('div');
-    divider.id = 'tse-tab-divider';
+    const divider = document.createElement('div')
+    divider.id = 'tse-tab-divider'
 
     // ── Teams のネイティブコンテンツをラップ ──
     // panel の既存の子要素を nativeRoot に移動し、
     // タブ切り替え時に一括 display:none できるようにする
-    const nativeRoot = document.createElement('div');
-    nativeRoot.id = 'tse-native-root';
-    nativeRoot.style.flex = '1';
-    nativeRoot.style.overflow = 'auto';
-    gState.nativeRoot = nativeRoot;
+    const nativeRoot = document.createElement('div')
+    nativeRoot.id = 'tse-native-root'
+    nativeRoot.style.flex = '1'
+    nativeRoot.style.overflow = 'auto'
+    gState.nativeRoot = nativeRoot
 
-    Array.from(panel.children).forEach(c => nativeRoot.appendChild(c));
+    Array.from(panel.children).forEach(c => nativeRoot.appendChild(c))
 
-    panel.style.display        = 'flex';
-    panel.style.flexDirection  = 'column';
-    panel.style.overflow       = 'hidden';
+    panel.style.display = 'flex'
+    panel.style.flexDirection = 'column'
+    panel.style.overflow = 'hidden'
 
-    panel.appendChild(tabBar);
-    panel.appendChild(divider);
-    panel.appendChild(nativeRoot);
+    panel.appendChild(tabBar)
+    panel.appendChild(divider)
+    panel.appendChild(nativeRoot)
 
     // ── 既存カードにボタンを追加 ──
-    decorateCards(nativeRoot);
+    decorateCards(nativeRoot)
   }
 
   // ──────────────────────────────────────────────────────────
@@ -640,28 +655,27 @@
   // ──────────────────────────────────────────────────────────
 
   /** @type {ReturnType<typeof setTimeout>|null} */
-  let throttle = null;
+  let throttle = null
 
   const observer = new MutationObserver(() => {
-    if (throttle) return;
+    if (throttle) return
     throttle = setTimeout(() => {
-      throttle = null;
-      const panel = findSavedPanel();
-      if (!panel) return;
+      throttle = null
+      const panel = findSavedPanel()
+      if (!panel) return
 
       if (panel !== gState.panel || !panel.querySelector('#tse-tabs')) {
-        gState.panel = null;
-        initPanel(panel);
+        gState.panel = null
+        initPanel(panel)
       } else if (gState.tab === 'saved' && gState.nativeRoot) {
-        decorateCards(gState.nativeRoot);
+        decorateCards(gState.nativeRoot)
       }
-    }, 250);
-  });
+    }, 250)
+  })
 
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(document.body, { childList: true, subtree: true })
 
   // 起動時に既にパネルがあれば即注入
-  const initialPanel = findSavedPanel();
-  if (initialPanel) initPanel(initialPanel);
-
-})();
+  const initialPanel = findSavedPanel()
+  if (initialPanel) initPanel(initialPanel)
+})()
