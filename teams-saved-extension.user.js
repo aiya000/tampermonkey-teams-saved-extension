@@ -678,4 +678,56 @@
   // 起動時に既にパネルがあれば即注入
   const initialPanel = findSavedPanel()
   if (initialPanel) initPanel(initialPanel)
+
+  // ──────────────────────────────────────────────────────────
+  //  起動時「チーム」タブへの自動遷移
+  //  TODO: 設定画面でオン/オフを切り替えられるようにする（デフォルト: オン）
+  //        → Issue #1: https://github.com/aiya000/tampermonkey-teams-saved-extension/issues/1
+  // ──────────────────────────────────────────────────────────
+
+  let autoNavDone = false
+
+  /** @returns {boolean} */
+  function tryNavigateToTeams() {
+    // 1. data-tid による検索
+    const byTid = document.querySelector('[data-tid="app-bar-teams"]')
+    if (byTid instanceof HTMLElement) {
+      byTid.click()
+      autoNavDone = true
+      return true
+    }
+
+    // 2. aria-label による検索（前方一致：「チーム」「Teams」で始まるもの）
+    const byLabel = Array.from(document.querySelectorAll('[aria-label]')).find(el => {
+      const label = el.getAttribute('aria-label') ?? ''
+      return label === 'チーム' || label.startsWith('チーム') || label === 'Teams' || label.startsWith('Teams')
+    })
+    if (byLabel instanceof HTMLElement) {
+      byLabel.click()
+      autoNavDone = true
+      return true
+    }
+
+    // 3. テキストコンテンツによる検索（ナビゲーション要素内で「チーム」のもの）
+    const byText = Array.from(document.querySelectorAll('[role="listitem"], [role="tab"], nav li')).find(
+      el => el.textContent?.trim() === 'チーム'
+    )
+    if (byText) {
+      const clickable = byText.querySelector('button, a') ?? byText
+      if (clickable instanceof HTMLElement) {
+        clickable.click()
+        autoNavDone = true
+        return true
+      }
+    }
+
+    return false
+  }
+
+  let autoNavAttempts = 0
+  const autoNavTimer = setInterval(() => {
+    if (autoNavDone || tryNavigateToTeams() || ++autoNavAttempts >= 20) {
+      clearInterval(autoNavTimer)
+    }
+  }, 500)
 })()
