@@ -503,6 +503,9 @@
   }
 
   function decorateCard(card) {
+    // 保存済みカード以外（フォロー中のスレッドなど）はスキップ
+    if (!card.matches('[id^="message-slice-card-saved-"]') && !card.closest('[id^="message-slice-card-saved-"]')) return;
+
     const msgId = getMessageId(card);
 
     // 完了 / アーカイブ済みならカードを隠す
