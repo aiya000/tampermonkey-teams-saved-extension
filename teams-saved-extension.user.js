@@ -10,52 +10,10 @@
 // @grant        none
 // ==/UserScript==
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//  設計メモ
-//  ─────────────────────────────────────────
-//  Teams の「保存済み」パネルを検出し、以下の UI を注入する：
-//
-//  [保存中] [完了] [アーカイブ]  ← タブ
-//
-//  「保存中」タブ：
-//    Teams ネイティブのリストをそのまま表示。
-//    各メッセージカードに「完了にする」「アーカイブにする」ボタンを追加。
-//    ボタンを押すとカードを非表示にして localStorage に保存。
-//    ※ Teams 側の「保存済み」状態はそのまま（取り消しは手動）。
-//
-//  「完了」「アーカイブ」タブ：
-//    localStorage に記録したアイテムを一覧表示。
-//    「保存に戻す」→ localStorage から削除（Teams 側には元々残っている）。
-//    「完全削除」→ localStorage から削除（Teams 側も手動で取り消し）。
-//
-//  ─────────────────────────────────────────
-//  DOM 調査結果（v1.1 で判明した実際のセレクタ）
-//  ─────────────────────────────────────────
-//  パネル : div.fui-MessageSlice  (class: "fui-TreeGrid fui-MessageSlice ...")
-//  カード  : div.fui-MessageSliceCard  (class: "fui-TreeGridRow fui-MessageSliceCard ...")
-//  カードID: id="message-slice-card-saved-SavedSliceCardItem|{msgId}"
-//            → {msgId} 部分を安定した識別子として使用
-//
-//  localStorage スキーマ:
-//    key: "tse_v1"
-//    value: { done: SavedItem[], archived: SavedItem[] }
-//
-//    SavedItem {
-//      id      : string  // "SavedSliceCardItem|{msgId}" または content hash
-//      sender  : string
-//      text    : string  // 最初の 500 文字
-//      movedAt : string  // ISO 8601
-//    }
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 ;(function () {
   'use strict'
 
-  // ──────────────────────────────────────────────────────────
-  //  Storage
-  // ──────────────────────────────────────────────────────────
-
-  const STORAGE_KEY = 'tse_v1'
+  const storageKey = 'tse_v1'
 
   /**
    * @typedef {{ id: string, sender: string, text: string, movedAt: string }} SavedItem
@@ -63,10 +21,12 @@
    */
 
   const store = {
-    /** @returns {StoreData} */
-    load() {
+    /**
+     * @returns {StoreData}
+     */
+    load: () => {
       try {
-        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{"done":[],"archived":[]}')
+        const parsed = JSON.parse(localStorage.getItem(storageKey) ?? '{"done":[],"archived":[]}')
         if (!Array.isArray(parsed.done)) parsed.done = []
         if (!Array.isArray(parsed.archived)) parsed.archived = []
         return parsed
@@ -74,19 +34,19 @@
         return { done: [], archived: [] }
       }
     },
-    /** @param {StoreData} data */
-    save(data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    /**
+     * @param {StoreData} data
+     */
+    save: (data) => {
+      localStorage.setItem(storageKey, JSON.stringify(data))
     }
   }
 
-  // ──────────────────────────────────────────────────────────
-  //  メッセージ識別子
-  //  カードの id 属性から "SavedSliceCardItem|{数字}" を取り出す。
-  //  取り出せなければ送信者 + テキストのハッシュで代替。
-  // ──────────────────────────────────────────────────────────
-
-  /** @param {string} str */
+  /**
+   * cyrb53 hash — used as fallback message ID when the card's DOM id is unavailable.
+   * @param {string} str
+   * @returns {string}
+   */
   function cyrb53(str) {
     let h1 = 0xdeadbeef
     let h2 = 0x41c6ce57
@@ -100,26 +60,34 @@
     return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36)
   }
 
-  // el はカード要素（.fui-MessageSliceCard）またはその子孫
-  /** @param {Element} el */
+  /**
+   * Extracts a stable message ID from a card element.
+   * Prefers the `id` attribute (e.g. "SavedSliceCardItem|1234"),
+   * falling back to a cyrb53 hash of sender + text.
+   * @param {Element} el - A card element (.fui-MessageSliceCard) or its descendant
+   * @returns {string}
+   */
   function getMessageId(el) {
-    // カード自身または祖先の id="message-slice-card-saved-*" を探す
     const card = el.matches('[id^="message-slice-card-saved-"]')
       ? el
       : el.closest('[id^="message-slice-card-saved-"]')
-    if (card?.id) {
+    if (card !== null && card.id !== '') {
       // "message-slice-card-saved-SavedSliceCardItem|1774938888651"
       // → "SavedSliceCardItem|1774938888651"
       const match = card.id.match(/message-slice-card-saved-(.+)/)
-      if (match) return match[1]
+      if (match !== null) {
+        return match[1]
+      }
     }
-    // フォールバック: コンテンツハッシュ
     const sender = extractSender(el)
     const text = el.textContent.trim().slice(0, 120)
     return 'hash:' + cyrb53(sender + '\0' + text)
   }
 
-  /** @param {Element} el */
+  /**
+   * @param {Element} el
+   * @returns {string}
+   */
   function extractSender(el) {
     return (
       el.querySelector('[data-tid*="author"], [data-tid*="sender"], [class*="authorName"]')
@@ -129,17 +97,18 @@
     ).trim()
   }
 
-  /** @param {Element} el */
+  /**
+   * @param {Element} el
+   * @returns {string}
+   */
   function extractText(el) {
     return el.textContent.trim().slice(0, 500)
   }
 
-  // ──────────────────────────────────────────────────────────
-  //  スタイル
-  // ──────────────────────────────────────────────────────────
-
   function injectStyles() {
-    if (document.getElementById('tse-styles')) return
+    if (document.getElementById('tse-styles') !== null) {
+      return
+    }
     const s = document.createElement('style')
     s.id = 'tse-styles'
     s.textContent = `
@@ -271,51 +240,61 @@
     document.head.appendChild(s)
   }
 
-  // ──────────────────────────────────────────────────────────
-  //  パネル・カード検出
-  // ──────────────────────────────────────────────────────────
-
-  // Teams PWA の「保存済み」コンテンツ領域
-  // DOM 調査により class="fui-TreeGrid fui-MessageSlice ..." と判明
-  /** @returns {HTMLElement|null} */
+  /**
+   * Finds the Teams "Saved" content panel (div.fui-MessageSlice).
+   * Identified by class "fui-TreeGrid fui-MessageSlice".
+   * @returns {HTMLElement | null}
+   */
   function findSavedPanel() {
-    return /** @type {HTMLElement|null} */ (document.querySelector('.fui-MessageSlice'))
+    const el = document.querySelector('.fui-MessageSlice')
+    return el instanceof HTMLElement ? el : null
   }
 
-  // 保存済みメッセージのカード
-  // id="message-slice-card-saved-*" が最も確実
-  /** @param {Element} root @returns {HTMLElement[]} */
+  /**
+   * Finds saved message cards within a root element.
+   * Prefers elements with id^="message-slice-card-saved-",
+   * falling back to .fui-MessageSliceCard.
+   * @param {Element} root
+   * @returns {HTMLElement[]}
+   */
   function findCards(root) {
     const byId = root.querySelectorAll('[id^="message-slice-card-saved-"]')
-    if (byId.length > 0) return /** @type {HTMLElement[]} */ (Array.from(byId))
-    // フォールバック: クラス名
-    return /** @type {HTMLElement[]} */ (Array.from(root.querySelectorAll('.fui-MessageSliceCard')))
+    if (byId.length > 0) {
+      return Array.from(byId).filter(el => el instanceof HTMLElement)
+    }
+    return Array.from(root.querySelectorAll('.fui-MessageSliceCard')).filter(
+      el => el instanceof HTMLElement
+    )
   }
 
-  // ──────────────────────────────────────────────────────────
-  //  状態
-  // ──────────────────────────────────────────────────────────
+  /**
+   * @typedef {object} GState
+   * @property {'saved' | 'done' | 'archived'} tab - Active tab identifier
+   * @property {HTMLElement | null} panel - The injected panel element
+   * @property {HTMLElement | null} tabBar - The tab bar element
+   * @property {HTMLElement | null} nativeRoot - Wraps Teams' native message list for show/hide on tab switch
+   */
 
-  /** @type {{ tab: string, panel: HTMLElement|null, tabBar: HTMLElement|null, nativeRoot: HTMLElement|null }} */
+  /** @type {GState} */
   const gState = {
-    tab: 'saved', // 'saved' | 'done' | 'archived'
-    panel: null, // 注入済みパネル要素
+    tab: 'saved',
+    panel: null,
     tabBar: null,
-    nativeRoot: null // Teams のネイティブリストをラップした div
+    nativeRoot: null
   }
 
-  // ──────────────────────────────────────────────────────────
-  //  タブ切り替え
-  // ──────────────────────────────────────────────────────────
-
-  /** @param {string} tab */
+  /**
+   * @param {'saved' | 'done' | 'archived'} tab
+   */
   function switchTab(tab) {
     gState.tab = tab
 
-    if (gState.tabBar) {
+    if (gState.tabBar !== null) {
       gState.tabBar.querySelectorAll('.tse-tab').forEach(b => {
-        const btn = /** @type {HTMLElement} */ (b)
-        btn.dataset.active = String(btn.dataset.tab === tab)
+        if (!(b instanceof HTMLElement)) {
+          return
+        }
+        b.dataset.active = String(b.dataset.tab === tab)
       })
     }
 
@@ -323,118 +302,164 @@
     document.getElementById('tse-toolbar')?.remove()
 
     if (tab === 'saved') {
-      if (gState.nativeRoot) gState.nativeRoot.style.display = ''
+      if (gState.nativeRoot !== null) {
+        gState.nativeRoot.style.display = ''
+      }
       decorateCards(gState.nativeRoot)
     } else {
-      if (gState.nativeRoot) gState.nativeRoot.style.display = 'none'
-      const panel = /** @type {HTMLElement} */ (gState.panel)
-      const customPanel = buildCustomPanel(tab)
-      panel.appendChild(customPanel)
+      if (gState.nativeRoot !== null) {
+        gState.nativeRoot.style.display = 'none'
+      }
+      const panel = gState.panel
+      if (panel === null) {
+        return
+      }
+      panel.appendChild(buildCustomPanel(tab))
       panel.appendChild(buildToolbar())
     }
   }
 
-  // ──────────────────────────────────────────────────────────
-  //  カスタムパネル（完了 / アーカイブ一覧）
-  // ──────────────────────────────────────────────────────────
+  /**
+   * Clears a container and shows the empty-state message.
+   * @param {HTMLElement} container
+   * @param {string} emptyMsg
+   */
+  function showEmpty(container, emptyMsg) {
+    while (container.firstChild !== null) {
+      container.removeChild(container.firstChild)
+    }
+    const empty = document.createElement('div')
+    empty.className = 'tse-empty'
+    empty.textContent = emptyMsg
+    container.appendChild(empty)
+  }
 
-  /** @param {string} tab */
+  /**
+   * @param {SavedItem} item
+   * @returns {HTMLElement}
+   */
+  function buildCardHeader(item) {
+    const header = document.createElement('div')
+    header.className = 'tse-card-header'
+    const senderEl = document.createElement('span')
+    senderEl.className = 'tse-card-sender'
+    senderEl.textContent = item.sender || '(不明)'
+    const dateEl = document.createElement('span')
+    dateEl.className = 'tse-card-date'
+    dateEl.textContent = new Date(item.movedAt).toLocaleString('ja-JP')
+    header.appendChild(senderEl)
+    header.appendChild(dateEl)
+    return header
+  }
+
+  /**
+   * @param {SavedItem} item
+   * @param {'done' | 'archived'} tab
+   * @param {HTMLElement} card
+   * @param {HTMLElement} listRoot
+   * @param {string} emptyMsg
+   * @returns {HTMLButtonElement}
+   */
+  function buildRestoreButton(item, tab, card, listRoot, emptyMsg) {
+    const btn = document.createElement('button')
+    btn.className = 'tse-btn tse-btn-restore'
+    btn.textContent = '保存に戻す'
+    btn.title = 'このリストから削除します。Teams 側の「保存済み」にはそのまま残ります。'
+    btn.onclick = () => {
+      removeFromStore(item.id, tab)
+      card.remove()
+      if (listRoot.querySelector('.tse-card') === null) {
+        showEmpty(listRoot, emptyMsg)
+      }
+      if (gState.nativeRoot !== null) {
+        findCards(gState.nativeRoot)
+          .filter(c => getMessageId(c) === item.id)
+          .forEach(c => {
+            c.style.display = ''
+            c.querySelector('.tse-actions')?.remove()
+          })
+        decorateCards(gState.nativeRoot)
+      }
+    }
+    return btn
+  }
+
+  /**
+   * @param {SavedItem} item
+   * @param {'done' | 'archived'} tab
+   * @param {HTMLElement} card
+   * @param {HTMLElement} listRoot
+   * @param {string} emptyMsg
+   * @returns {HTMLButtonElement}
+   */
+  function buildDeleteButton(item, tab, card, listRoot, emptyMsg) {
+    const btn = document.createElement('button')
+    btn.className = 'tse-btn tse-btn-delete'
+    btn.textContent = '完全削除'
+    btn.title =
+      'このリストから完全に削除します。Teams 側の「保存済み」も手動で取り消してください。'
+    btn.onclick = () => {
+      removeFromStore(item.id, tab)
+      card.remove()
+      if (listRoot.querySelector('.tse-card') === null) {
+        showEmpty(listRoot, emptyMsg)
+      }
+    }
+    return btn
+  }
+
+  /**
+   * Builds a single card element for the done/archived list.
+   * @param {SavedItem} item
+   * @param {'done' | 'archived'} tab
+   * @param {HTMLElement} listRoot - The panel root element (used to show empty state)
+   * @param {string} emptyMsg - Message to display when the list becomes empty
+   * @returns {HTMLElement}
+   */
+  function buildCard(item, tab, listRoot, emptyMsg) {
+    const card = document.createElement('div')
+    card.className = 'tse-card'
+
+    const textEl = document.createElement('div')
+    textEl.className = 'tse-card-text'
+    textEl.textContent = item.text || ''
+
+    const actions = document.createElement('div')
+    actions.className = 'tse-actions'
+
+    card.appendChild(buildCardHeader(item))
+    card.appendChild(textEl)
+    card.appendChild(actions)
+    actions.appendChild(buildRestoreButton(item, tab, card, listRoot, emptyMsg))
+    actions.appendChild(buildDeleteButton(item, tab, card, listRoot, emptyMsg))
+    return card
+  }
+
+  /**
+   * Builds the custom panel for the done / archived list.
+   * @param {'done' | 'archived'} tab
+   * @returns {HTMLElement}
+   */
   function buildCustomPanel(tab) {
     const data = store.load()
     const items = tab === 'done' ? data.done : data.archived
     const emptyMsg =
-      tab === 'done' ? '完了済みのメッセージはないのです' : 'アーカイブ済みのメッセージはないのです'
+      tab === 'done' ? '完了済みのメッセージはありません。' : 'アーカイブ済みのメッセージはありません。'
 
     const root = document.createElement('div')
     root.id = 'tse-custom-panel'
 
-    /** @param {HTMLElement} container */
-    function showEmpty(container) {
-      while (container.firstChild) container.removeChild(container.firstChild)
-      const empty = document.createElement('div')
-      empty.className = 'tse-empty'
-      empty.textContent = emptyMsg
-      container.appendChild(empty)
-    }
-
     if (items.length === 0) {
-      showEmpty(root)
+      showEmpty(root, emptyMsg)
       return root
     }
 
     items.forEach(item => {
-      const card = document.createElement('div')
-      card.className = 'tse-card'
-
-      const header = document.createElement('div')
-      header.className = 'tse-card-header'
-      const senderEl = document.createElement('span')
-      senderEl.className = 'tse-card-sender'
-      senderEl.textContent = item.sender || '(不明)'
-      const dateEl = document.createElement('span')
-      dateEl.className = 'tse-card-date'
-      dateEl.textContent = new Date(item.movedAt).toLocaleString('ja-JP')
-      header.appendChild(senderEl)
-      header.appendChild(dateEl)
-
-      const textEl = document.createElement('div')
-      textEl.className = 'tse-card-text'
-      textEl.textContent = item.text || ''
-
-      const actions = document.createElement('div')
-      actions.className = 'tse-actions'
-
-      card.appendChild(header)
-      card.appendChild(textEl)
-      card.appendChild(actions)
-
-      const restoreBtn = document.createElement('button')
-      restoreBtn.className = 'tse-btn tse-btn-restore'
-      restoreBtn.textContent = '保存に戻す'
-      restoreBtn.title =
-        'このリストから削除します。Teams 側の「保存済み」にはそのまま残りますです。'
-      restoreBtn.onclick = () => {
-        removeFromStore(item.id, tab)
-        card.remove()
-        if (!root.querySelector('.tse-card')) {
-          showEmpty(root)
-        }
-        // 「保存中」タブのカードを再表示させる（display:none を解除）
-        if (gState.nativeRoot) {
-          findCards(gState.nativeRoot)
-            .filter(c => getMessageId(c) === item.id)
-            .forEach(c => {
-              c.style.display = ''
-              c.querySelector('.tse-actions')?.remove()
-            })
-          decorateCards(gState.nativeRoot)
-        }
-      }
-
-      const deleteBtn = document.createElement('button')
-      deleteBtn.className = 'tse-btn tse-btn-delete'
-      deleteBtn.textContent = '完全削除'
-      deleteBtn.title =
-        'このリストから完全に削除します。Teams 側の「保存済み」も手動で取り消してほしいのです。'
-      deleteBtn.onclick = () => {
-        removeFromStore(item.id, tab)
-        card.remove()
-        if (!root.querySelector('.tse-card')) {
-          showEmpty(root)
-        }
-      }
-
-      actions.appendChild(restoreBtn)
-      actions.appendChild(deleteBtn)
-      root.appendChild(card)
+      root.appendChild(buildCard(item, tab, root, emptyMsg))
     })
 
     return root
   }
-
-  // ──────────────────────────────────────────────────────────
-  //  ツールバー（エクスポート / インポート）
-  // ──────────────────────────────────────────────────────────
 
   function buildToolbar() {
     const el = document.createElement('div')
@@ -455,11 +480,12 @@
     return el
   }
 
-  // ──────────────────────────────────────────────────────────
-  //  CRUD
-  // ──────────────────────────────────────────────────────────
-
-  /** @param {string} msgId @param {string} sender @param {string} text @param {string} status */
+  /**
+   * @param {string} msgId - Message ID: "SavedSliceCardItem|{number}" or "hash:{hash}"
+   * @param {string} sender - Sender display name
+   * @param {string} text - Message text (first 500 chars)
+   * @param {'done' | 'archived'} status
+   */
   function markAs(msgId, sender, text, status) {
     const data = store.load()
     const entry = { id: msgId, sender, text, movedAt: new Date().toISOString() }
@@ -473,7 +499,10 @@
     store.save(data)
   }
 
-  /** @param {string} id @param {string} type */
+  /**
+   * @param {string} id - Message ID
+   * @param {'done' | 'archived'} type
+   */
   function removeFromStore(id, type) {
     const data = store.load()
     if (type === 'done') data.done = data.done.filter(i => i.id !== id)
@@ -481,15 +510,14 @@
     store.save(data)
   }
 
-  /** @param {string} msgId */
+  /**
+   * @param {string} msgId - Message ID to check
+   * @returns {boolean}
+   */
   function isCategorized(msgId) {
     const data = store.load()
     return data.done.some(i => i.id === msgId) || data.archived.some(i => i.id === msgId)
   }
-
-  // ──────────────────────────────────────────────────────────
-  //  エクスポート / インポート
-  // ──────────────────────────────────────────────────────────
 
   function doExport() {
     const data = store.load()
@@ -507,14 +535,23 @@
     input.type = 'file'
     input.accept = '.json'
     input.onchange = e => {
-      const target = /** @type {HTMLInputElement} */ (e.target)
-      const file = target.files?.[0]
-      if (!file) return
+      if (!(e.target instanceof HTMLInputElement)) {
+        return
+      }
+      const file = e.target.files?.[0]
+      if (file === undefined) {
+        return
+      }
       const reader = new FileReader()
       reader.onload = ev => {
         try {
-          const loadedReader = /** @type {FileReader} */ (ev.target)
-          const imp = JSON.parse(/** @type {string} */ (loadedReader.result))
+          if (!(ev.target instanceof FileReader)) {
+            return
+          }
+          if (typeof ev.target.result !== 'string') {
+            return
+          }
+          const imp = JSON.parse(ev.target.result)
           if (!Array.isArray(imp.done) || !Array.isArray(imp.archived)) throw new Error()
           const cur = store.load()
           const merge = (
@@ -531,10 +568,10 @@
             done: merge(cur.done, imp.done),
             archived: merge(cur.archived, imp.archived)
           })
-          alert('インポート完了なのです♪')
+          alert('インポートが完了しました。')
           switchTab(gState.tab)
         } catch {
-          alert('インポートに失敗しましたです…\nJSON ファイルの形式を確認してほしいのです。')
+          alert('インポートに失敗しました。\nJSON ファイルの形式を確認してください。')
         }
       }
       reader.readAsText(file)
@@ -542,35 +579,45 @@
     input.click()
   }
 
-  // ──────────────────────────────────────────────────────────
-  //  カードへのボタン注入
-  // ──────────────────────────────────────────────────────────
-
-  /** @param {HTMLElement|null} root */
+  /**
+   * Decorates saved message cards with "Done" and "Archive" action buttons.
+   * @param {HTMLElement | null} root
+   */
   function decorateCards(root) {
-    if (!root) return
+    if (root === null) {
+      return
+    }
     findCards(root).forEach(decorateCard)
   }
 
-  /** @param {HTMLElement} card */
+  /**
+   * Injects "完了にする" and "アーカイブにする" buttons into a single saved message card.
+   * Steps:
+   *   1. Skip non-saved cards (followed threads, etc.)
+   *   2. If already categorized (done/archived), hide the card
+   *   3. If buttons already injected, skip
+   *   4. Append action buttons to the card
+   *      (The card is a fui-TreeGridRow CSS Grid; CSS sets grid-column: 1 / -1 for full-width)
+   * @param {HTMLElement} card
+   */
   function decorateCard(card) {
-    // 保存済みカード以外（フォロー中のスレッドなど）はスキップ
     if (
       !card.matches('[id^="message-slice-card-saved-"]') &&
       !card.closest('[id^="message-slice-card-saved-"]')
-    )
+    ) {
       return
+    }
 
     const msgId = getMessageId(card)
 
-    // 完了 / アーカイブ済みならカードを隠す
     if (isCategorized(msgId)) {
       card.style.display = 'none'
       return
     }
 
-    // 既にボタン注入済みならスキップ
-    if (card.querySelector('.tse-actions')) return
+    if (card.querySelector('.tse-actions') !== null) {
+      return
+    }
 
     const sender = extractSender(card)
     const text = extractText(card)
@@ -598,35 +645,36 @@
 
     actions.appendChild(doneBtn)
     actions.appendChild(archBtn)
-
-    // カードは fui-TreeGridRow（CSS Grid）。
-    // grid-column: 1 / -1 （CSS で指定済み）で全列スパンさせるため、
-    // カード自身に直接 append する。
     card.appendChild(actions)
   }
 
-  // ──────────────────────────────────────────────────────────
-  //  パネルへの UI 注入（初回 or DOM 差し替え時）
-  // ──────────────────────────────────────────────────────────
-
-  /** @param {HTMLElement} panel */
+  /**
+   * Injects the TSE UI into the detected panel (first call or after DOM replacement by Teams).
+   * Sets up:
+   *   - Tab bar (保存中 / 完了 / アーカイブ)
+   *   - Wraps existing panel children in nativeRoot for show/hide on tab switch
+   *   - Decorates existing cards with action buttons
+   * @param {HTMLElement} panel
+   */
   function initPanel(panel) {
     injectStyles()
     gState.panel = panel
 
-    // 既に注入済みならスキップ
-    if (panel.querySelector('#tse-tabs')) return
+    if (panel.querySelector('#tse-tabs') !== null) {
+      return
+    }
 
-    // ── タブバー ──
     const tabBar = document.createElement('div')
     tabBar.id = 'tse-tabs'
     gState.tabBar = tabBar
 
-    ;[
+    /** @type {Array<{id: 'saved' | 'done' | 'archived', label: string}>} */
+    const tabDefs = [
       { id: 'saved', label: '保存中' },
       { id: 'done', label: '完了' },
       { id: 'archived', label: 'アーカイブ' }
-    ].forEach(({ id, label }) => {
+    ]
+    tabDefs.forEach(({ id, label }) => {
       const btn = document.createElement('button')
       btn.className = 'tse-tab'
       btn.dataset.tab = id
@@ -639,9 +687,6 @@
     const divider = document.createElement('div')
     divider.id = 'tse-tab-divider'
 
-    // ── Teams のネイティブコンテンツをラップ ──
-    // panel の既存の子要素を nativeRoot に移動し、
-    // タブ切り替え時に一括 display:none できるようにする
     const nativeRoot = document.createElement('div')
     nativeRoot.id = 'tse-native-root'
     nativeRoot.style.flex = '1'
@@ -658,28 +703,27 @@
     panel.appendChild(divider)
     panel.appendChild(nativeRoot)
 
-    // ── 既存カードにボタンを追加 ──
     decorateCards(nativeRoot)
   }
 
-  // ──────────────────────────────────────────────────────────
-  //  MutationObserver
-  // ──────────────────────────────────────────────────────────
-
-  /** @type {ReturnType<typeof setTimeout>|null} */
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let throttle = null
 
   const observer = new MutationObserver(() => {
-    if (throttle) return
+    if (throttle !== null) {
+      return
+    }
     throttle = setTimeout(() => {
       throttle = null
       const panel = findSavedPanel()
-      if (!panel) return
+      if (panel === null) {
+        return
+      }
 
-      if (panel !== gState.panel || !panel.querySelector('#tse-tabs')) {
+      if (panel !== gState.panel || panel.querySelector('#tse-tabs') === null) {
         gState.panel = null
         initPanel(panel)
-      } else if (gState.tab === 'saved' && gState.nativeRoot) {
+      } else if (gState.tab === 'saved' && gState.nativeRoot !== null) {
         decorateCards(gState.nativeRoot)
       }
     }, 250)
@@ -687,21 +731,24 @@
 
   observer.observe(document.body, { childList: true, subtree: true })
 
-  // 起動時に既にパネルがあれば即注入
   const initialPanel = findSavedPanel()
-  if (initialPanel) initPanel(initialPanel)
-
-  // ──────────────────────────────────────────────────────────
-  //  起動時「チーム」タブへの自動遷移
-  //  TODO: 設定画面でオン/オフを切り替えられるようにする（デフォルト: オン）
-  //        → Issue #1: https://github.com/aiya000/tampermonkey-teams-saved-extension/issues/1
-  // ──────────────────────────────────────────────────────────
+  if (initialPanel !== null) {
+    initPanel(initialPanel)
+  }
 
   let autoNavDone = false
 
-  /** @returns {boolean} */
+  /**
+   * Attempts to navigate to the Teams tab on startup.
+   * Uses three strategies in order:
+   *   1. `data-tid="app-bar-teams"` attribute
+   *   2. `aria-label` starting with "チーム" or "Teams"
+   *   3. Text content "チーム" within `[role="listitem"]`, `[role="tab"]`, or `nav li`
+   * TODO: Add a settings UI to toggle this (default: on)
+   *       → Issue #1: https://github.com/aiya000/tampermonkey-teams-saved-extension/issues/1
+   * @returns {boolean}
+   */
   function tryNavigateToTeams() {
-    // 1. data-tid による検索
     const byTid = document.querySelector('[data-tid="app-bar-teams"]')
     if (byTid instanceof HTMLElement) {
       byTid.click()
@@ -709,10 +756,14 @@
       return true
     }
 
-    // 2. aria-label による検索（前方一致：「チーム」「Teams」で始まるもの）
     const byLabel = Array.from(document.querySelectorAll('[aria-label]')).find(el => {
       const label = el.getAttribute('aria-label') ?? ''
-      return label === 'チーム' || label.startsWith('チーム') || label === 'Teams' || label.startsWith('Teams')
+      return (
+        label === 'チーム' ||
+        label.startsWith('チーム') ||
+        label === 'Teams' ||
+        label.startsWith('Teams')
+      )
     })
     if (byLabel instanceof HTMLElement) {
       byLabel.click()
@@ -720,11 +771,10 @@
       return true
     }
 
-    // 3. テキストコンテンツによる検索（ナビゲーション要素内で「チーム」のもの）
-    const byText = Array.from(document.querySelectorAll('[role="listitem"], [role="tab"], nav li')).find(
-      el => el.textContent?.trim() === 'チーム'
-    )
-    if (byText) {
+    const byText = Array.from(
+      document.querySelectorAll('[role="listitem"], [role="tab"], nav li')
+    ).find(el => el.textContent?.trim() === 'チーム')
+    if (byText !== undefined) {
       const clickable = byText.querySelector('button, a') ?? byText
       if (clickable instanceof HTMLElement) {
         clickable.click()
