@@ -135,15 +135,6 @@
   }
 
   // ──────────────────────────────────────────────────────────
-  //  HTML エスケープ
-  // ──────────────────────────────────────────────────────────
-
-  /** @type {Record<string, string>} */
-  const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
-  const esc = (/** @type {string|null|undefined} */ s) =>
-    String(s ?? '').replace(/[&<>"]/g, c => ESC_MAP[c])
-
-  // ──────────────────────────────────────────────────────────
   //  スタイル
   // ──────────────────────────────────────────────────────────
 
@@ -337,7 +328,8 @@
     } else {
       if (gState.nativeRoot) gState.nativeRoot.style.display = 'none'
       const panel = /** @type {HTMLElement} */ (gState.panel)
-      panel.appendChild(buildCustomPanel(tab))
+      const customPanel = buildCustomPanel(tab)
+      panel.appendChild(customPanel)
       panel.appendChild(buildToolbar())
     }
   }
@@ -356,25 +348,45 @@
     const root = document.createElement('div')
     root.id = 'tse-custom-panel'
 
+    /** @param {HTMLElement} container */
+    function showEmpty(container) {
+      while (container.firstChild) container.removeChild(container.firstChild)
+      const empty = document.createElement('div')
+      empty.className = 'tse-empty'
+      empty.textContent = emptyMsg
+      container.appendChild(empty)
+    }
+
     if (items.length === 0) {
-      root.innerHTML = `<div class="tse-empty">${esc(emptyMsg)}</div>`
+      showEmpty(root)
       return root
     }
 
     items.forEach(item => {
       const card = document.createElement('div')
       card.className = 'tse-card'
-      card.innerHTML = `
-        <div class="tse-card-header">
-          <span class="tse-card-sender">${esc(item.sender || '(不明)')}</span>
-          <span class="tse-card-date">${esc(new Date(item.movedAt).toLocaleString('ja-JP'))}</span>
-        </div>
-        <div class="tse-card-text">${esc(item.text || '')}</div>
-        <div class="tse-actions"></div>
-      `
 
-      const actions = card.querySelector('.tse-actions')
-      if (!actions) return
+      const header = document.createElement('div')
+      header.className = 'tse-card-header'
+      const senderEl = document.createElement('span')
+      senderEl.className = 'tse-card-sender'
+      senderEl.textContent = item.sender || '(不明)'
+      const dateEl = document.createElement('span')
+      dateEl.className = 'tse-card-date'
+      dateEl.textContent = new Date(item.movedAt).toLocaleString('ja-JP')
+      header.appendChild(senderEl)
+      header.appendChild(dateEl)
+
+      const textEl = document.createElement('div')
+      textEl.className = 'tse-card-text'
+      textEl.textContent = item.text || ''
+
+      const actions = document.createElement('div')
+      actions.className = 'tse-actions'
+
+      card.appendChild(header)
+      card.appendChild(textEl)
+      card.appendChild(actions)
 
       const restoreBtn = document.createElement('button')
       restoreBtn.className = 'tse-btn tse-btn-restore'
@@ -385,7 +397,7 @@
         removeFromStore(item.id, tab)
         card.remove()
         if (!root.querySelector('.tse-card')) {
-          root.innerHTML = `<div class="tse-empty">${esc(emptyMsg)}</div>`
+          showEmpty(root)
         }
         // 「保存中」タブのカードを再表示させる（display:none を解除）
         if (gState.nativeRoot) {
@@ -408,7 +420,7 @@
         removeFromStore(item.id, tab)
         card.remove()
         if (!root.querySelector('.tse-card')) {
-          root.innerHTML = `<div class="tse-empty">${esc(emptyMsg)}</div>`
+          showEmpty(root)
         }
       }
 
