@@ -741,7 +741,7 @@
     panel.appendChild(divider)
     panel.appendChild(nativeRoot)
 
-    decorateCards(nativeRoot)
+    switchTab(gState.tab)
   }
 
   /** @type {ReturnType<typeof setTimeout> | null} */
