@@ -16,7 +16,7 @@
   const storageKey = 'tse_v1'
 
   /**
-   * @typedef {{ id: string, sender: string, channel: string, text: string, movedAt: string }} SavedItem
+   * @typedef {{ id: string, sender: string, channel: string, timestamp: string, text: string, movedAt: string }} SavedItem
    * @typedef {{ done: SavedItem[], archived: SavedItem[] }} StoreData
    */
 
@@ -115,7 +115,18 @@
    * @returns {string}
    */
   function extractText(el) {
-    return el.textContent.trim().slice(0, 500)
+    return (
+      el.querySelector('[data-tid="message-slice-card-preview"]')?.textContent?.trim() ??
+      el.textContent.trim()
+    ).slice(0, 500)
+  }
+
+  /**
+   * @param {Element} el
+   * @returns {string}
+   */
+  function extractTimestamp(el) {
+    return el.querySelector('[data-tid="message-slice-card-timestamp"]')?.textContent?.trim() ?? ''
   }
 
   function injectStyles() {
@@ -361,7 +372,7 @@
       : (item.sender || '(不明)')
     const dateEl = document.createElement('span')
     dateEl.className = 'tse-card-date'
-    dateEl.textContent = new Date(item.movedAt).toLocaleString('ja-JP')
+    dateEl.textContent = item.timestamp || new Date(item.movedAt).toLocaleString('ja-JP')
     header.appendChild(senderEl)
     header.appendChild(dateEl)
     return header
@@ -522,12 +533,13 @@
    * @param {string} msgId - Message ID: "SavedSliceCardItem|{number}" or "hash:{hash}"
    * @param {string} sender - Sender display name
    * @param {string} channel - Channel name
+   * @param {string} timestamp - Post timestamp as displayed by Teams (e.g. "16:59")
    * @param {string} text - Message text (first 500 chars)
    * @param {'done' | 'archived'} status
    */
-  function markAs(msgId, sender, channel, text, status) {
+  function markAs(msgId, sender, channel, timestamp, text, status) {
     const data = store.load()
-    const entry = { id: msgId, sender, channel, text, movedAt: new Date().toISOString() }
+    const entry = { id: msgId, sender, channel, timestamp, text, movedAt: new Date().toISOString() }
     if (status === 'done') {
       data.done = data.done.filter(i => i.id !== msgId)
       data.done.unshift(entry)
@@ -660,6 +672,7 @@
 
     const sender = extractSender(card)
     const channel = extractChannel(card)
+    const timestamp = extractTimestamp(card)
     const text = extractText(card)
 
     const actions = document.createElement('div')
@@ -670,7 +683,7 @@
     doneBtn.textContent = '完了にする'
     doneBtn.onclick = e => {
       e.stopPropagation()
-      markAs(msgId, sender, channel, text, 'done')
+      markAs(msgId, sender, channel, timestamp, text, 'done')
       card.style.display = 'none'
     }
 
@@ -679,7 +692,7 @@
     archBtn.textContent = 'アーカイブにする'
     archBtn.onclick = e => {
       e.stopPropagation()
-      markAs(msgId, sender, channel, text, 'archived')
+      markAs(msgId, sender, channel, timestamp, text, 'archived')
       card.style.display = 'none'
     }
 
