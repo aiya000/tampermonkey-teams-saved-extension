@@ -1,4 +1,4 @@
-# Teams Saved Extensions - Slack-style "Done" and "Archive"
+# Tampermonkey Teams Saved Extensions - Slack-style "Done" and "Archive"
 
 Adds Slack-style "Completed" and "Archived" tabs to the "Saved" section in Microsoft Teams.  
 You can organize items saved in "Saved" by categorizing them into "Completed" or "Archived," or by deleting them. Data is stored in localStorage.
