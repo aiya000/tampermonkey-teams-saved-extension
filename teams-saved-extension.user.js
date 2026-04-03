@@ -413,8 +413,10 @@
     btn.textContent = '完全削除'
     btn.title =
       'このリストから完全に削除します。Teams 側の「保存済み」も手動で取り消してください。'
-    // TODO: 削除実行前に確認ダイアログを1回挟む
     btn.onclick = () => {
+      if (!window.confirm('このメッセージを完全に削除しますか？\nTeams 側の「保存済み」も手動で取り消してください。')) {
+        return
+      }
       removeFromStore(item.id, tab)
       card.remove()
       if (listRoot.querySelector('.tse-card') === null) {
