@@ -16,7 +16,7 @@
   const storageKey = 'tse_v1'
 
   /**
-   * @typedef {{ id: string, sender: string, text: string, movedAt: string }} SavedItem
+   * @typedef {{ id: string, sender: string, channel: string, text: string, movedAt: string }} SavedItem
    * @typedef {{ done: SavedItem[], archived: SavedItem[] }} StoreData
    */
 
@@ -90,11 +90,24 @@
    */
   function extractSender(el) {
     return (
-      el.querySelector('[data-tid*="author"], [data-tid*="sender"], [class*="authorName"]')
-        ?.textContent ??
-      el.querySelector('[class*="author"], [class*="sender"]')?.textContent ??
-      ''
+      el.querySelector('[data-tid="message-slice-card-title"]')?.textContent ?? ''
     ).trim()
+  }
+
+  /**
+   * Extracts the channel name from a saved message card.
+   * The location cell contains an avatar span (with id^="avatar-") followed by
+   * a plain span (no id) whose text is the channel name.
+   * @param {Element} el
+   * @returns {string}
+   */
+  function extractChannel(el) {
+    const location = el.querySelector('[data-tid="message-slice-card-saved-location"]')
+    if (location === null) {
+      return ''
+    }
+    const nameSpan = location.querySelector('span[role="presentation"]:not([id])')
+    return nameSpan?.textContent?.trim() ?? ''
   }
 
   /**
@@ -343,7 +356,9 @@
     header.className = 'tse-card-header'
     const senderEl = document.createElement('span')
     senderEl.className = 'tse-card-sender'
-    senderEl.textContent = item.sender || '(不明)'
+    senderEl.textContent = item.channel
+      ? `${item.sender || '(不明)'} / ${item.channel}`
+      : (item.sender || '(不明)')
     const dateEl = document.createElement('span')
     dateEl.className = 'tse-card-date'
     dateEl.textContent = new Date(item.movedAt).toLocaleString('ja-JP')
@@ -398,6 +413,7 @@
     btn.textContent = '完全削除'
     btn.title =
       'このリストから完全に削除します。Teams 側の「保存済み」も手動で取り消してください。'
+    // TODO: 削除実行前に確認ダイアログを1回挟む
     btn.onclick = () => {
       removeFromStore(item.id, tab)
       card.remove()
@@ -410,6 +426,8 @@
 
   /**
    * Builds a single card element for the done/archived list.
+   * Clicking the card body (outside action buttons) navigates to the original message
+   * by finding the hidden native card in nativeRoot and clicking it.
    * @param {SavedItem} item
    * @param {'done' | 'archived'} tab
    * @param {HTMLElement} listRoot - The panel root element (used to show empty state)
@@ -419,6 +437,24 @@
   function buildCard(item, tab, listRoot, emptyMsg) {
     const card = document.createElement('div')
     card.className = 'tse-card'
+    card.style.cursor = 'pointer'
+    card.onclick = e => {
+      if (!(e.target instanceof HTMLElement)) {
+        return
+      }
+      if (e.target.closest('.tse-actions') !== null) {
+        return
+      }
+      if (gState.nativeRoot === null) {
+        return
+      }
+      const nativeCard = findCards(gState.nativeRoot).find(c => getMessageId(c) === item.id)
+      if (nativeCard === undefined) {
+        return
+      }
+      nativeCard.style.display = ''
+      nativeCard.click()
+    }
 
     const textEl = document.createElement('div')
     textEl.className = 'tse-card-text'
@@ -483,12 +519,13 @@
   /**
    * @param {string} msgId - Message ID: "SavedSliceCardItem|{number}" or "hash:{hash}"
    * @param {string} sender - Sender display name
+   * @param {string} channel - Channel name
    * @param {string} text - Message text (first 500 chars)
    * @param {'done' | 'archived'} status
    */
-  function markAs(msgId, sender, text, status) {
+  function markAs(msgId, sender, channel, text, status) {
     const data = store.load()
-    const entry = { id: msgId, sender, text, movedAt: new Date().toISOString() }
+    const entry = { id: msgId, sender, channel, text, movedAt: new Date().toISOString() }
     if (status === 'done') {
       data.done = data.done.filter(i => i.id !== msgId)
       data.done.unshift(entry)
@@ -620,6 +657,7 @@
     }
 
     const sender = extractSender(card)
+    const channel = extractChannel(card)
     const text = extractText(card)
 
     const actions = document.createElement('div')
@@ -630,7 +668,7 @@
     doneBtn.textContent = '完了にする'
     doneBtn.onclick = e => {
       e.stopPropagation()
-      markAs(msgId, sender, text, 'done')
+      markAs(msgId, sender, channel, text, 'done')
       card.style.display = 'none'
     }
 
@@ -639,7 +677,7 @@
     archBtn.textContent = 'アーカイブにする'
     archBtn.onclick = e => {
       e.stopPropagation()
-      markAs(msgId, sender, text, 'archived')
+      markAs(msgId, sender, channel, text, 'archived')
       card.style.display = 'none'
     }
 
