@@ -16,7 +16,7 @@
   const storageKey = 'tse_v1'
 
   /**
-   * @typedef {{ id: string, sender: string, channel: string, timestamp: string, text: string, movedAt: string }} SavedItem
+   * @typedef {{ id: string, sender: string, channel: string, timestamp: string, text: string }} SavedItem
    * @typedef {{ done: SavedItem[], archived: SavedItem[] }} StoreData
    */
 
@@ -372,7 +372,7 @@
       : (item.sender || '(不明)')
     const dateEl = document.createElement('span')
     dateEl.className = 'tse-card-date'
-    dateEl.textContent = item.timestamp || new Date(item.movedAt).toLocaleString('ja-JP')
+    dateEl.textContent = item.timestamp
     header.appendChild(senderEl)
     header.appendChild(dateEl)
     return header
@@ -539,7 +539,7 @@
    */
   function markAs(msgId, sender, channel, timestamp, text, status) {
     const data = store.load()
-    const entry = { id: msgId, sender, channel, timestamp, text, movedAt: new Date().toISOString() }
+    const entry = { id: msgId, sender, channel, timestamp, text }
     if (status === 'done') {
       data.done = data.done.filter(i => i.id !== msgId)
       data.done.unshift(entry)
