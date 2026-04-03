@@ -1,6 +1,8 @@
 # Tampermonkey Teams Saved Extensions - Slack-style "Done" and "Archive"
 
-Adds Slack-style "Completed" and "Archived" tabs to the "Saved" section in Microsoft Teams.  
+A tampermonkey script that adds Slack-style "Completed" and "Archived" tabs to the "Saved" section in Microsoft Teams.  
+Allows to manage conversations and tasks.
+
 You can organize items saved in "Saved" by categorizing them into "Completed" or "Archived," or by deleting them. Data is stored in localStorage.
 
 <img src="readme/overview.png" width="700">
