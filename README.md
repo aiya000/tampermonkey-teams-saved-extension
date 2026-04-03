@@ -23,10 +23,8 @@ You can organize items saved in "Saved" by categorizing them into "Completed" or
 
 **その他**
 
-- 「保存に戻す」で保存中タブに戻せる（Teams 側の保存済みはそのまま残る）
-- 「完全削除」で一覧から削除（確認ダイアログあり）
 - エクスポート / インポートで JSON ファイルにデータを保存・復元
-- データは `localStorage` に保存（クラウド同期なし）
+- データは `localStorage` に保存（クラウド同期がないことにご注意ください）
 
 ## インストール
 
