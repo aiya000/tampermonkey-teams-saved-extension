@@ -266,12 +266,22 @@
 
   /**
    * Finds the Teams "Saved" content panel (div.fui-MessageSlice).
-   * Identified by class "fui-TreeGrid fui-MessageSlice".
+   * Multiple views (e.g. "フォロー中のスレッド") share the same class, so we
+   * identify the correct panel by checking that its closest
+   * [data-tid="slot-measurer"] ancestor starts with the heading "保存済み".
    * @returns {HTMLElement | null}
    */
   function findSavedPanel() {
-    const el = document.querySelector('.fui-MessageSlice')
-    return el instanceof HTMLElement ? el : null
+    const panels = Array.from(document.querySelectorAll('.fui-MessageSlice')).filter(
+      el => el instanceof HTMLElement
+    )
+    return panels.find(panel => {
+      const container = panel.closest('[data-tid="slot-measurer"]')
+      if (!(container instanceof HTMLElement)) {
+        return false
+      }
+      return container.innerText.trimStart().startsWith('保存済み')
+    }) ?? null
   }
 
   /**
