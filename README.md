@@ -3,7 +3,7 @@
 Adds Slack-style "Completed" and "Archived" tabs to the "Saved" section in Microsoft Teams.  
 You can organize items saved in "Saved" by categorizing them into "Completed" or "Archived," or by deleting them. Data is stored in localStorage.
 
-![overview](readme/overview.png)
+<img src="readme/overview.png" width="700">
 
 > **Note:** The author only uses Teams in Japanese, so only the Japanese version of Teams is currently supported. PRs are welcome! :D
 
@@ -11,15 +11,15 @@ You can organize items saved in "Saved" by categorizing them into "Completed" or
 
 **保存中タブ** — Teams ネイティブの保存済みリストを表示。各メッセージに「完了にする」「アーカイブにする」ボタンを追加。
 
-![saved](readme/saved.png)
+<img src="readme/saved.png" width="300">
 
 **完了タブ** — 完了にしたメッセージの一覧。カードをクリックすると元のメッセージへジャンプ。
 
-![done](readme/done.png)
+<img src="readme/done.png" width="300">
 
 **アーカイブタブ** — アーカイブにしたメッセージの一覧。
 
-![archived](readme/archived.png)
+<img src="readme/archived.png" width="300">
 
 **その他**
 
