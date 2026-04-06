@@ -27,8 +27,12 @@
     load: () => {
       try {
         const parsed = JSON.parse(localStorage.getItem(storageKey) ?? '{"done":[],"archived":[]}')
-        if (!Array.isArray(parsed.done)) parsed.done = []
-        if (!Array.isArray(parsed.archived)) parsed.archived = []
+        if (!Array.isArray(parsed.done)) {
+          parsed.done = []
+        }
+        if (!Array.isArray(parsed.archived)) {
+          parsed.archived = []
+        }
         return parsed
       } catch {
         return { done: [], archived: [] }
@@ -566,8 +570,11 @@
    */
   function removeFromStore(id, type) {
     const data = store.load()
-    if (type === 'done') data.done = data.done.filter(i => i.id !== id)
-    else data.archived = data.archived.filter(i => i.id !== id)
+    if (type === 'done') {
+      data.done = data.done.filter(i => i.id !== id)
+    } else {
+      data.archived = data.archived.filter(i => i.id !== id)
+    }
     store.save(data)
   }
 
@@ -613,7 +620,9 @@
             return
           }
           const imp = JSON.parse(ev.target.result)
-          if (!Array.isArray(imp.done) || !Array.isArray(imp.archived)) throw new Error()
+          if (!Array.isArray(imp.done) || !Array.isArray(imp.archived)) {
+            throw new Error()
+          }
           const cur = store.load()
           const merge = (
             /** @type {SavedItem[]} */ existing,
@@ -621,7 +630,9 @@
           ) => {
             const map = new Map(existing.map(i => [i.id, i]))
             incoming.forEach(i => {
-              if (!map.has(i.id)) map.set(i.id, i)
+              if (!map.has(i.id)) {
+                map.set(i.id, i)
+              }
             })
             return [...map.values()]
           }
