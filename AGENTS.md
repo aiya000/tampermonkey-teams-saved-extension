@@ -1,5 +1,16 @@
 # AGENTS.md
 
+## Design Principles
+
+Follow SOLID, KISS, YAGNI, and DRY.
+
+## Git Rules
+
+- Always use `git pull --rebase`; plain `git pull` is not allowed
+- Never use `--no-verify`
+- Keep each commit focused on a single purpose
+- When addressing review feedback, use one commit per comment; do not bundle multiple fixes
+
 ## Naming
 
 ### Constants
@@ -13,6 +24,10 @@ const STORAGE_KEY = 'tse_v1'
 // Good
 const storageKey = 'tse_v1'
 ```
+
+### Variable and function names
+
+Name variables and functions so that the name and type together make the purpose clear. Do not embed type information in a name when the type already conveys it.
 
 ## Function Style
 
@@ -34,21 +49,19 @@ const store = {
 }
 ```
 
-### Function size
+### Function size and responsibility
 
-When a function body grows to ~60 lines or more, extract sub-steps into named helper functions. Prefer small, well-named functions over long inline blocks.
+Each function should have a single, clear responsibility. When a function body grows to ~60 lines or more, extract sub-steps into named helper functions.
 
 ## Control Flow Style
 
-### if statements
+### `if` statements
 
 Always use braces, even for single-line bodies:
 
 ```js
 // Bad
 if (!root) return
-if (condition)
-  return
 
 // Good
 if (!root) {
@@ -58,21 +71,77 @@ if (!root) {
 
 ### Null / undefined comparisons
 
-Do not rely on falsy/truthy checks when comparing against `null` or `undefined`. Use explicit comparisons:
+Do not use falsy/truthy checks when comparing against `null` or `undefined`. Use explicit comparisons:
 
 ```js
 // Bad
 if (!root) { return }
-if (throttle) { return }
 if (gState.nativeRoot) { ... }
 
 // Good
 if (root === null) { return }
-if (throttle !== null) { return }
 if (gState.nativeRoot !== null) { ... }
 ```
 
+When a value may be both `null` and `undefined`, check both explicitly:
+
+```js
+// Bad
+if (!foo || foo === null) { ... }
+
+// Good
+if (foo === null || foo === undefined) { ... }
+```
+
 This applies to all nullable values (`T | null`, `T | undefined`, optional chaining results, etc.).
+
+## Comments
+
+Write a comment when the intent behind code is not immediately obvious. Remove comments that restate what the code already expresses clearly.
+
+### Overview and step comments belong in JSDoc
+
+Do not write "overview" or "step" comments as standalone `//` comments above or inside a function. Put them in the function's JSDoc instead:
+
+```js
+// Bad — standalone comment above JSDoc
+// el はカード要素またはその子孫
+/**
+ * @param {Element} el
+ */
+function getMessageId(el) {
+  // ステップ1: IDを取り出す
+  // ステップ2: フォールバック
+}
+
+// Good — all description in JSDoc
+/**
+ * Extracts a stable message ID from a card element.
+ * Steps:
+ *   1. Prefer the id attribute ("SavedSliceCardItem|{number}")
+ *   2. Fall back to a cyrb53 hash of sender + text
+ * @param {Element} el - A card element or its descendant
+ * @returns {string}
+ */
+function getMessageId(el) { ... }
+```
+
+### Silenced exceptions
+
+When a `catch` block intentionally ignores an error, add a comment explaining why:
+
+```js
+// Bad
+} catch {
+  return fallback
+}
+
+// Good
+} catch {
+  // JSON.parse throws on malformed input; fall back to empty state
+  return fallback
+}
+```
 
 ## JSDoc Annotation Style
 
@@ -190,40 +259,9 @@ Always put spaces around `|` in union types:
 ```js
 // Bad
 /** @type {HTMLElement|null} */
-/** @param {Foo|Bar} x */
 
 // Good
 /** @type {HTMLElement | null} */
-/** @param {Foo | Bar} x */
-```
-
-## Comments
-
-### Overview and step comments belong in JSDoc
-
-Do not write "overview" or "step" comments as standalone `//` comments above or inside a function. Put them in the function's JSDoc instead:
-
-```js
-// Bad — standalone comment above JSDoc
-// el はカード要素またはその子孫
-/**
- * @param {Element} el
- */
-function getMessageId(el) {
-  // ステップ1: IDを取り出す
-  // ステップ2: フォールバック
-}
-
-// Good — all description in JSDoc
-/**
- * Extracts a stable message ID from a card element.
- * Steps:
- *   1. Prefer the id attribute ("SavedSliceCardItem|{number}")
- *   2. Fall back to a cyrb53 hash of sender + text
- * @param {Element} el - A card element or its descendant
- * @returns {string}
- */
-function getMessageId(el) { ... }
 ```
 
 ## Type Safety
@@ -253,8 +291,8 @@ const result = /** @type {string} */ (reader.result)
 
 // Good
 if (typeof reader.result !== 'string') {
-  console.error('Expected reader.result to be a string, got:', reader.result) // Or, considering throw new Error(...)
-  return                                                                      //
+  console.error('Expected reader.result to be a string, got:', reader.result)
+  return
 }
 const imp = JSON.parse(reader.result)
 ```
@@ -277,3 +315,25 @@ function isHTMLElement(el) {
   return el instanceof HTMLElement
 }
 ```
+
+### Global scope
+
+Avoid polluting the global scope. In TypeScript projects, do not use `declare global` or `declare var` in application code; place global type extensions in dedicated `.d.ts` files.
+
+## Code Design
+
+### Extending vs. separating
+
+When deciding whether to extend existing code or extract it into a new module:
+
+- **Separate when**: the change spans multiple concerns, makes testing complex, or exceeds the module's current responsibility
+- **Extend when**: the change fits within the existing responsibility and stays within the same file
+- Ask: "Does this change fit within the existing module's responsibility?"
+
+### Minimum change principle
+
+Keep changes to existing code as small as necessary to achieve the goal.
+
+### Tests
+
+Do not re-implement production logic in tests to verify it — tests should assert the behavior of the actual production code. If a function is hard to test directly due to external dependencies, extract the pure logic into a separate function and test that.
