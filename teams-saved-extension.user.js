@@ -264,6 +264,23 @@
         color: inherit;
       }
       .tse-tool-btn:hover { background: rgba(255,255,255,0.12); }
+
+      /* ── ナビゲーション時ローディングスピナー ── */
+      #tse-native-root { position: relative; }
+      #tse-spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(255,255,255,0.2);
+        border-top-color: rgba(255,255,255,0.8);
+        border-radius: 50%;
+        animation: tse-spin 0.8s linear infinite;
+        visibility: visible;
+      }
+      @keyframes tse-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
     `
     document.head.appendChild(s)
   }
@@ -480,6 +497,10 @@
       nativeRoot.style.display = ''
       nativeRoot.style.visibility = 'hidden'
 
+      const spinner = document.createElement('div')
+      spinner.id = 'tse-spinner'
+      nativeRoot.appendChild(spinner)
+
       const findNativeCard = () => findCards(nativeRoot).find(c => getMessageId(c) === item.id)
       let nativeCard = findNativeCard()
 
@@ -493,6 +514,8 @@
           }
         }
       }
+
+      spinner.remove()
 
       if (nativeCard === undefined) {
         nativeRoot.style.visibility = ''
