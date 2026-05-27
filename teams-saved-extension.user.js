@@ -357,13 +357,15 @@
     document.getElementById('tse-toolbar')?.remove()
 
     if (tab === 'saved') {
-      if (gState.nativeRoot !== null) {
-        gState.nativeRoot.style.display = ''
+      const nativeRoot = document.getElementById('tse-native-root') ?? gState.nativeRoot
+      if (nativeRoot !== null) {
+        nativeRoot.style.display = ''
       }
-      decorateCards(gState.nativeRoot)
+      decorateCards(nativeRoot)
     } else {
-      if (gState.nativeRoot !== null) {
-        gState.nativeRoot.style.display = 'none'
+      const nativeRoot = document.getElementById('tse-native-root') ?? gState.nativeRoot
+      if (nativeRoot !== null) {
+        nativeRoot.style.display = 'none'
       }
       const panel = gState.panel
       if (panel === null) {
