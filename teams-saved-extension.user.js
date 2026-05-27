@@ -359,12 +359,61 @@
     if (tab === 'saved') {
       const nativeRoot = document.getElementById('tse-native-root') ?? gState.nativeRoot
       if (nativeRoot !== null) {
+        nativeRoot.style.transition = ''
+        nativeRoot.style.opacity = ''
         nativeRoot.style.display = ''
+        nativeRoot.style.visibility = 'hidden'
+
+        const spinner = document.createElement('div')
+        spinner.id = 'tse-spinner'
+        nativeRoot.appendChild(spinner)
+
+        /** @type {ReturnType<typeof setTimeout> | null} */
+        let stabilizeTimer = null
+        /** @type {ReturnType<typeof setTimeout> | null} */
+        let maxTimer = null
+
+        const finish = () => {
+          obs.disconnect()
+          if (stabilizeTimer !== null) {
+            clearTimeout(stabilizeTimer)
+          }
+          if (maxTimer !== null) {
+            clearTimeout(maxTimer)
+          }
+          spinner.remove()
+          decorateCards(nativeRoot)
+          nativeRoot.style.opacity = '0'
+          nativeRoot.style.visibility = ''
+          requestAnimationFrame(() => {
+            nativeRoot.style.transition = 'opacity 0.25s ease'
+            nativeRoot.style.opacity = '1'
+            nativeRoot.addEventListener('transitionend', () => {
+              nativeRoot.style.transition = ''
+              nativeRoot.style.opacity = ''
+            }, { once: true })
+          })
+        }
+
+        const obs = new MutationObserver(() => {
+          if (stabilizeTimer !== null) {
+            clearTimeout(stabilizeTimer)
+          }
+          stabilizeTimer = setTimeout(finish, 300)
+        })
+        obs.observe(nativeRoot, { childList: true, subtree: true })
+
+        stabilizeTimer = setTimeout(finish, 50)
+        maxTimer = setTimeout(finish, 3000)
+      } else {
+        decorateCards(nativeRoot)
       }
-      decorateCards(nativeRoot)
     } else {
       const nativeRoot = document.getElementById('tse-native-root') ?? gState.nativeRoot
       if (nativeRoot !== null) {
+        nativeRoot.style.transition = ''
+        nativeRoot.style.opacity = ''
+        nativeRoot.style.visibility = ''
         nativeRoot.style.display = 'none'
       }
       const panel = gState.panel
