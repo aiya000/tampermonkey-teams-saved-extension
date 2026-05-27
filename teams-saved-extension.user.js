@@ -478,6 +478,7 @@
       }
 
       nativeRoot.style.display = ''
+      nativeRoot.style.visibility = 'hidden'
 
       const findNativeCard = () => findCards(nativeRoot).find(c => getMessageId(c) === item.id)
       let nativeCard = findNativeCard()
@@ -494,12 +495,15 @@
       }
 
       if (nativeCard === undefined) {
+        nativeRoot.style.visibility = ''
         nativeRoot.style.display = 'none'
         return
       }
 
+      nativeRoot.style.visibility = ''
       nativeCard.style.display = ''
       nativeCard.click()
+      nativeRoot.style.display = 'none'
     }
 
     const textEl = document.createElement('div')
