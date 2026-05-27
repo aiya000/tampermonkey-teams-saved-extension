@@ -401,7 +401,7 @@
           }
           stabilizeTimer = setTimeout(finish, 300)
         })
-        obs.observe(nativeRoot, { childList: true, subtree: true })
+        obs.observe(nativeRoot, { childList: true, subtree: true, attributes: true })
 
         stabilizeTimer = setTimeout(finish, 50)
         maxTimer = setTimeout(finish, 3000)
