@@ -465,20 +465,39 @@
     const card = document.createElement('div')
     card.className = 'tse-card'
     card.style.cursor = 'pointer'
-    card.onclick = e => {
+    card.onclick = async e => {
       if (!(e.target instanceof HTMLElement)) {
         return
       }
       if (e.target.closest('.tse-actions') !== null) {
         return
       }
-      if (gState.nativeRoot === null) {
+      const nativeRoot = document.getElementById('tse-native-root')
+      if (nativeRoot === null) {
         return
       }
-      const nativeCard = findCards(gState.nativeRoot).find(c => getMessageId(c) === item.id)
+
+      nativeRoot.style.display = ''
+
+      const findNativeCard = () => findCards(nativeRoot).find(c => getMessageId(c) === item.id)
+      let nativeCard = findNativeCard()
+
       if (nativeCard === undefined) {
+        nativeRoot.scrollTop = 0
+        for (let i = 0; i < 10; i++) {
+          await new Promise(resolve => setTimeout(resolve, 300))
+          nativeCard = findNativeCard()
+          if (nativeCard !== undefined) {
+            break
+          }
+        }
+      }
+
+      if (nativeCard === undefined) {
+        nativeRoot.style.display = 'none'
         return
       }
+
       nativeCard.style.display = ''
       nativeCard.click()
     }
